@@ -1,0 +1,249 @@
+    org 0x8000      ; Dirección de inicio del programa
+
+; definiciones de memoria
+numeros:      ds 20   ; área de memoria para almacenar los 20 números generados
+numeros_ord:  ds 20   ; área de memoria para almacenar los 20 números ordenados
+seleccion:    db 0    ; variable que guarda la selección de ordenamiento (1=ascendente, 2=descendente)
+repetir:      db 0    ; variable que guarda la opción de repetir o salir (1=continuar, 2=salir)
+
+; Inicia el programa mostrando el mensaje de inicio y generando los números pseudo-aleatorios
+inicio:
+    call imprimir_texto_inicial  ; Llama a la subrutina para mostrar el mensaje inicial
+generar_numeros:
+    ld hl, numeros      ; Apunta a la zona de memoria donde se almacenarán los números
+    ld b, 20            ; Inicializa el contador de 20 números
+generar_bucle:
+    call generar_aleatorio    ; Genera un número pseudoaleatorio en el registro A
+    ld (hl), a          ; Guarda el número generado en la memoria
+    inc hl              ; Incrementa el puntero de memoria
+    djnz generar_bucle  ; Repite hasta que B llegue a 0, generando 20 números
+
+    call mostrar_numeros  ; Muestra los números generados en pantalla
+
+    call imprimir_texto_ordenar  ; Pregunta si se desea ordenar ascendente o descendente
+    call leer_seleccion           ; Lee la opción ingresada por el usuario
+
+    ld a, (seleccion)  ; Carga la selección de ordenamiento (1 o 2)
+    cp 1               ; Compara si la opción es ascendente (1)
+    call z, ordenar_asc    ; Si es ascendente, llama a la rutina para ordenar ascendente
+    call nz, ordenar_desc  ; Si es descendente, llama a la rutina para ordenar descendente
+
+    call mostrar_numeros_ordenados  ; Muestra los números ordenados
+
+    call imprimir_texto_repetir  ; Pregunta si desea repetir el programa
+    call leer_seleccion_repetir  ; Lee la selección (1=continuar, 2=salir)
+    
+    ld a, (repetir)  ; Carga la selección de repetir/salir
+    cp 1             ; Compara si el valor es continuar (1)
+    jr z, inicio     ; Si es continuar, salta al inicio para repetir el programa
+
+    call imprimir_texto_salir  ; Si elige salir, muestra el mensaje de salida
+    jp fin           ; Finaliza el programa
+
+; Subrutinas
+
+; Muestra el mensaje inicial
+imprimir_texto_inicial:
+    ld hl, texto_inicial      ; Carga la dirección del texto
+    call imprimir_texto       ; Llama a la rutina que imprime texto
+    ret                       ; Regresa al programa principal
+
+; Muestra el mensaje para preguntar sobre el ordenamiento (ascendente o descendente)
+imprimir_texto_ordenar:
+    ld hl, texto_ordenar      ; Carga la dirección del texto
+    call imprimir_texto       ; Llama a la rutina que imprime texto
+    ret                       ; Regresa al programa principal
+
+; Muestra el mensaje para preguntar si se desea repetir el programa
+imprimir_texto_repetir:
+    ld hl, texto_repetir      ; Carga la dirección del texto
+    call imprimir_texto       ; Llama a la rutina que imprime texto
+    ret                       ; Regresa al programa principal
+
+; Muestra el mensaje de salida
+imprimir_texto_salir:
+    ld hl, texto_salir        ; Carga la dirección del texto
+    call imprimir_texto       ; Llama a la rutina que imprime texto
+    ret                       ; Regresa al programa principal
+
+; Rutina para imprimir una cadena de texto desde una dirección de memoria (HL)
+imprimir_texto:
+imprimir_bucle:
+    ld a, (hl)                ; Carga el carácter actual en A
+    or a                      ; Compara con 0 (carácter nulo)
+    ret z                     ; Si es 0, termina de imprimir
+    call imprimir_caracter     ; Imprime el carácter en A
+    inc hl                    ; Apunta al siguiente carácter
+    jr imprimir_bucle          ; Repite el bucle hasta encontrar el carácter nulo
+
+; Rutina para generar un número pseudo-aleatorio simple
+generar_aleatorio:
+    ld a, r                   ; Usa el registro de refresco (R) para generar un número pseudo-aleatorio
+    ret                       ; Devuelve el número generado en A
+
+; Muestra los números generados (en formato decimal)
+mostrar_numeros:
+    ld hl, numeros            ; Carga la dirección donde están almacenados los números
+    ld b, 20                  ; Inicializa el contador de 20 números
+mostrar_bucle:
+    ld a, (hl)                ; Carga el siguiente número a mostrar
+    call imprimir_numero       ; Llama a la rutina para imprimir el número en decimal
+    inc hl                    ; Avanza al siguiente número en la memoria
+    djnz mostrar_bucle         ; Repite hasta que B sea 0
+    ret                       ; Regresa al programa principal
+
+; Muestra los números ordenados (en formato decimal)
+mostrar_numeros_ordenados:
+    ld hl, numeros_ord        ; Carga la dirección donde están los números ordenados
+    ld b, 20                  ; Inicializa el contador de 20 números
+mostrar_orden_bucle:
+    ld a, (hl)                ; Carga el siguiente número a mostrar
+    call imprimir_numero       ; Llama a la rutina para imprimir el número en decimal
+    inc hl                    ; Avanza al siguiente número en la memoria
+    djnz mostrar_orden_bucle   ; Repite hasta que B sea 0
+    ret                       ; Regresa al programa principal
+
+; Convierte un número de 8 bits (0-255) en su formato decimal y lo imprime
+imprimir_numero:
+    ld b, 100                 ; Carga el divisor (100) para la centena
+    call dividir              ; Divide A entre 100, resultado en A (centena), resto en E
+    add a, '0'                ; Convierte la centena a carácter ASCII
+    call imprimir_caracter     ; Imprime el carácter
+    ld a, e                   ; Carga el resto (decenas y unidades)
+    ld b, 10                  ; Carga el divisor (10) para la decena
+    call dividir              ; Divide A entre 10, resultado en A (decena), resto en E
+    add a, '0'                ; Convierte la decena a carácter ASCII
+    call imprimir_caracter     ; Imprime el carácter
+    ld a, e                   ; Carga el resto (unidad)
+    add a, '0'                ; Convierte la unidad a carácter ASCII
+    call imprimir_caracter     ; Imprime el carácter
+    ret                       ; Regresa al programa principal
+
+; Divide A entre B, el cociente se guarda en A y el resto en E
+dividir:
+    xor e                     ; Inicializa el registro E (resto)
+div_loop:
+    cp b                      ; Compara A con B
+    jr c, div_done            ; Si A < B, termina la división
+    sub b                     ; Resta B de A
+    inc e                     ; Incrementa el cociente
+    jr div_loop               ; Repite el bucle
+div_done:
+    ret                       ; Regresa con el cociente en A y el resto en E
+
+; Rutina para leer la selección del usuario (1 o 2)
+leer_seleccion:
+leer_seleccion_bucle:
+    call leer_tecla           ; Llama a la rutina para leer una tecla
+    cp '1'                    ; Compara con '1'
+    jr z, seleccion_ascendente ; Si es '1', selecciona orden ascendente
+    cp '2'                    ; Compara con '2'
+    jr z, seleccion_descendente ; Si es '2', selecciona orden descendente
+    jr leer_seleccion_bucle   ; Si no es válido, vuelve a leer
+
+seleccion_ascendente:
+    ld a, 1                   ; Carga 1 para orden ascendente
+    ld (seleccion), a         ; Guarda en la variable 'seleccion'
+    ret                       ; Regresa al programa principal
+
+seleccion_descendente:
+    ld a, 2                   ; Carga 2 para orden descendente
+    ld (seleccion), a         ; Guarda en la variable 'seleccion'
+    ret                       ; Regresa al programa principal
+
+; Rutina para leer si el usuario desea repetir (1=continuar, 2=salir)
+leer_seleccion_repetir:
+leer_seleccion_repetir_bucle:
+    call leer_tecla           ; Llama a la rutina para leer una tecla
+    cp '1'                    ; Compara con '1'
+    jr z, repetir_si          ; Si es '1', selecciona continuar
+    cp '2'                    ; Compara con '2'
+    jr z, repetir_no          ; Si es '2', selecciona salir
+    jr leer_seleccion_repetir_bucle ; Si no es válido, vuelve a leer
+
+repetir_si:
+    ld a, 1                   ; Carga 1 para repetir
+    ld (repetir), a           ; Guarda en la variable 'repetir'
+    ret                       ; Regresa al programa principal
+
+repetir_no:
+    ld a, 2                   ; Carga 2 para salir
+    ld (repetir), a           ; Guarda en la variable 'repetir'
+    ret                       ; Regresa al programa principal
+
+; Rutina para leer una tecla del puerto 0 (esto dependerá del hardware)
+leer_tecla:
+    in a, (0)                 ; Lee la tecla desde el puerto
+    ret                       ; Devuelve la tecla en A
+
+; Rutina para ordenar los números en forma ascendente usando burbuja
+ordenar_asc:
+    ld hl, numeros            ; Apunta a los números generados
+    ld de, numeros_ord        ; Apunta al área de los números ordenados
+    call copiar_memoria       ; Copia los números a la nueva área de memoria
+    ld b, 20                  ; Inicializa el contador
+orden_asc_bucle:
+    ld c, b
+    dec c
+    ld hl, numeros_ord
+orden_asc_interno:
+    ld a, (hl)                ; Carga el primer número
+    inc hl
+    ld d, (hl)                ; Carga el segundo número
+    cp d                      ; Compara los dos números
+    jr nc, no_swap_asc        ; Si ya están en orden, no los intercambia
+    ld (hl), a                ; Si están fuera de orden, intercambia
+    dec hl
+    ld (hl), d
+no_swap_asc:
+    dec c
+    jr nz, orden_asc_interno  ; Repite hasta el final del área
+    djnz orden_asc_bucle      ; Repite el proceso hasta que estén todos ordenados
+    ret                       ; Regresa al programa principal
+
+; Rutina para ordenar los números en forma descendente usando burbuja
+ordenar_desc:
+    ld hl, numeros            ; Apunta a los números generados
+    ld de, numeros_ord        ; Apunta al área de los números ordenados
+    call copiar_memoria       ; Copia los números a la nueva área de memoria
+    ld b, 20                  ; Inicializa el contador
+orden_desc_bucle:
+    ld c, b
+    dec c
+    ld hl, numeros_ord
+orden_desc_interno:
+    ld a, (hl)                ; Carga el primer número
+    inc hl
+    ld d, (hl)                ; Carga el segundo número
+    cp d                      ; Compara los dos números
+    jr c, no_swap_desc        ; Si ya están en orden, no los intercambia
+    ld (hl), a                ; Si están fuera de orden, intercambia
+    dec hl
+    ld (hl), d
+no_swap_desc:
+    dec c
+    jr nz, orden_desc_interno ; Repite hasta el final del área
+    djnz orden_desc_bucle     ; Repite el proceso hasta que estén todos ordenados
+    ret                       ; Regresa al programa principal
+
+; Rutina para copiar los números generados a la zona de memoria de números ordenados
+copiar_memoria:
+    ld b, 20                  ; Inicializa el contador
+copiar_bucle:
+    ld a, (hl)                ; Carga el valor de la memoria origen
+    ld (de), a                ; Copia el valor a la memoria destino
+    inc hl                    ; Incrementa el puntero de origen
+    inc de                    ; Incrementa el puntero de destino
+    djnz copiar_bucle         ; Repite hasta que se copien todos los números
+    ret                       ; Regresa al programa principal
+
+fin:
+    nop
+    halt                      ; Fin del programa
+
+; Textos almacenados en la memoria (terminados en 0)
+texto_inicial:     db 'iniciando generación de números...', 0
+texto_ordenar:     db '¿cómo deseas ordenar? 1) ascendente 2) descendente', 0
+texto_repetir:     db '¿deseas repetir el programa? 1) sí 2) no', 0
+texto_salir:       db 'saliendo del programa. ¡nos vemos!', 0
+
